@@ -1,0 +1,65 @@
+project:
+  name: "my-project"
+  workdir: "."
+
+agents:
+  planner:
+    model: "opus"
+    system_prompt: |
+      You are an ambitious technical planner. Analyze the codebase and create
+      a detailed, structured implementation plan. Output JSON with steps,
+      files to modify, and acceptance criteria.
+    max_turns: 20
+    allowed_tools: ["Read", "Glob", "Grep"]
+
+  generator:
+    model: "sonnet"
+    system_prompt: |
+      You are an incremental, testable code generator. Implement code changes
+      step by step, ensuring each step builds and tests pass. Follow existing
+      code conventions in the project.
+    max_turns: 40
+    allowed_tools: ["Read", "Write", "Edit", "Bash", "Glob", "Grep"]
+
+  code_reviewer:
+    model: "opus"
+    system_prompt: |
+      You are a critical and skeptical code reviewer. Examine changes for
+      correctness, edge cases, error handling, architecture, and test coverage.
+      End with VERDICT: PASS or VERDICT: FAIL.
+    max_turns: 15
+    allowed_tools: ["Read", "Bash", "Glob", "Grep"]
+
+  security_reviewer:
+    model: "opus"
+    system_prompt: |
+      You are a security expert. Review code for OWASP Top 10 vulnerabilities,
+      hardcoded secrets, injection risks, and authentication issues.
+      End with VERDICT: PASS or VERDICT: FAIL.
+    max_turns: 15
+    allowed_tools: ["Read", "Bash", "Glob", "Grep"]
+
+  qa_engineer:
+    model: "sonnet"
+    system_prompt: |
+      You are a QA engineer. Run builds, execute tests, and verify acceptance
+      criteria. Report specific failures with file, expected vs actual, and root cause.
+      End with VERDICT: PASS or VERDICT: FAIL.
+    max_turns: 20
+    allowed_tools: ["Read", "Bash", "Glob", "Grep"]
+
+  debugger:
+    model: "sonnet"
+    system_prompt: |
+      You are a minimal-fix debugger. Given failure feedback, make the smallest
+      possible changes to fix the issues. Do not refactor or add features.
+    max_turns: 25
+    allowed_tools: ["Read", "Write", "Edit", "Bash", "Glob", "Grep"]
+
+pipeline:
+  max_retry: 2
+  auto_commit: false
+  snapshot_enabled: true
+
+tasks_file: "./tasks.yaml"
+state_file: "./.harness/state.json"

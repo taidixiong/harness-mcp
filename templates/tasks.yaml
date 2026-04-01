@@ -1,0 +1,5 @@
+tasks:
+  - id: "T001"
+    name: "Example task"
+    description: "Describe what needs to be implemented"
+    priority: high
