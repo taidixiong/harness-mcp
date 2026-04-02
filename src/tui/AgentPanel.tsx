@@ -11,8 +11,6 @@ interface AgentPanelProps {
   toolCallCounts: Record<string, number>;
 }
 
-const SPINNER_FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
-
 function AgentPanelInner({ activeAgent, activeResult, turnCount, maxTurns, toolCallCounts }: AgentPanelProps) {
   if (!activeAgent) {
     return (
@@ -24,7 +22,8 @@ function AgentPanelInner({ activeAgent, activeResult, turnCount, maxTurns, toolC
 
   const display = AGENT_DISPLAY[activeAgent as keyof typeof AGENT_DISPLAY] ?? { label: activeAgent, color: 'white' };
   const maxCount = Math.max(1, ...Object.values(toolCallCounts));
-  const frame = SPINNER_FRAMES[Math.floor(Date.now() / 1000) % SPINNER_FRAMES.length];
+  const totalCalls = Object.values(toolCallCounts).reduce((a, b) => a + b, 0);
+  const frame = '\u25B6';
 
   return (
     <Box flexDirection="column" padding={1}>
@@ -41,12 +40,18 @@ function AgentPanelInner({ activeAgent, activeResult, turnCount, maxTurns, toolC
           const barLen = Math.round((count / maxCount) * 20);
           return (
             <Box key={tool}>
-              <Box width={10}><Text>{tool}</Text></Box>
-              <Text color="green">{'█'.repeat(barLen)}{'░'.repeat(20 - barLen)}</Text>
+              <Box width={14}><Text>{tool}</Text></Box>
+              <Text color="green">{'\u2588'.repeat(barLen)}{'\u2591'.repeat(20 - barLen)}</Text>
               <Text> {count}</Text>
             </Box>
           );
         })}
+
+      {totalCalls > 0 && (
+        <Box marginTop={1}>
+          <Text color="gray">Total tool calls: {totalCalls}</Text>
+        </Box>
+      )}
 
       {activeResult && (
         <Box flexDirection="column" marginTop={1}>

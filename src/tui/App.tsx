@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
 import { Box, useApp, useInput, useStdout } from 'ink';
 import { Header } from './components/Header.js';
 import { StatusBar } from './components/StatusBar.js';
@@ -16,13 +16,14 @@ interface AppProps {
   pipelineStatus: 'idle' | 'running' | 'complete' | 'error';
 }
 
-const BATCH_INTERVAL_MS = 250;
+const BATCH_INTERVAL_MS = 300;
 
 const MemoHeader = memo(Header);
 const MemoDashboard = memo(Dashboard);
 const MemoBoard = memo(Board);
 const MemoAgentPanel = memo(AgentPanel);
 const MemoLiveFeed = memo(LiveFeed);
+const MemoStatusBar = memo(StatusBar);
 
 export function App({ store, projectName, pipelineStatus }: AppProps) {
   const { exit } = useApp();
@@ -33,6 +34,7 @@ export function App({ store, projectName, pipelineStatus }: AppProps) {
   const [toolCallCounts, setToolCallCounts] = useState<Record<string, number>>({});
   const [elapsed, setElapsed] = useState('00:00');
   const [rows, setRows] = useState(stdout.rows ?? 24);
+  const [storeVersion, setStoreVersion] = useState(0);
   const startTimeRef = useRef(Date.now());
 
   // Buffers for batching event-driven state updates
@@ -69,11 +71,18 @@ export function App({ store, projectName, pipelineStatus }: AppProps) {
     if (input === 'q') exit();
   });
 
-  // Track terminal resize
+  // Track terminal resize (debounced)
   useEffect(() => {
-    const onResize = () => setRows(stdout.rows ?? 24);
+    let timeout: ReturnType<typeof setTimeout>;
+    const onResize = () => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => setRows(stdout.rows ?? 24), 100);
+    };
     stdout.on('resize', onResize);
-    return () => { stdout.off('resize', onResize); };
+    return () => {
+      stdout.off('resize', onResize);
+      clearTimeout(timeout);
+    };
   }, [stdout]);
 
   // Batched event handler — collect events, flush on timer
@@ -83,6 +92,12 @@ export function App({ store, projectName, pipelineStatus }: AppProps) {
 
       if (event.type === 'agent:start') setActiveAgent(event.agent ?? null);
       if (event.type === 'agent:complete') setActiveAgent(null);
+
+      // Bump store version on task-level events so child components re-read state
+      if (event.type === 'task:status_change' ||
+          event.type === 'agent:start' || event.type === 'agent:complete') {
+        setStoreVersion((v) => v + 1);
+      }
 
       if (event.type === 'agent:event' && event.data) {
         const data = event.data as Record<string, unknown>;
@@ -115,14 +130,27 @@ export function App({ store, projectName, pipelineStatus }: AppProps) {
     return () => clearInterval(interval);
   }, []);
 
-  const state = store.getState();
-  const currentTask = state.tasks.find((t) => !['inbox', 'done', 'failed'].includes(t.status));
+  // Snapshot store state only when storeVersion bumps (task-level events)
+  const state = useMemo(() => store.getState(), [store, storeVersion]);
+
+  const currentTaskId = useMemo(() => {
+    const t = state.tasks.find((t) => !['inbox', 'done', 'failed'].includes(t.status));
+    return t?.id ?? null;
+  }, [state]);
+
+  const currentStage = useMemo(() => {
+    const t = state.tasks.find((t) => t.id === currentTaskId);
+    return t?.status ?? null;
+  }, [state, currentTaskId]);
+
+  // Stable reference for recent events shown in Dashboard
+  const recentEvents = useMemo(() => events.slice(-5), [events]);
 
   return (
     <Box flexDirection="column" height={rows}>
       <MemoHeader activeTab={activeTab} projectName={projectName} />
       <Box flexGrow={1}>
-        {activeTab === 0 && <MemoDashboard store={store} recentEvents={events} />}
+        {activeTab === 0 && <MemoDashboard store={store} recentEvents={recentEvents} />}
         {activeTab === 1 && <MemoBoard store={store} />}
         {activeTab === 2 && (
           <MemoAgentPanel
@@ -135,10 +163,10 @@ export function App({ store, projectName, pipelineStatus }: AppProps) {
         )}
         {activeTab === 3 && <MemoLiveFeed events={events} />}
       </Box>
-      <StatusBar
+      <MemoStatusBar
         pipelineStatus={pipelineStatus}
-        currentTask={currentTask?.id ?? null}
-        currentStage={currentTask?.status ?? null}
+        currentTask={currentTaskId}
+        currentStage={currentStage}
         elapsed={elapsed}
       />
     </Box>
