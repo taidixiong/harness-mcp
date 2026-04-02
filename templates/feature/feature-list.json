@@ -1,0 +1,23 @@
+{
+  "$comment": [
+    "子任务清单 — 本需求的进度真相来源",
+    "",
+    "规则：",
+    "  1. 人类定义任务（id, name, description）",
+    "  2. Agent 只修改 status 和 notes",
+    "  3. status 流转：pending → in_progress → completed（或 blocked）",
+    "  4. 按 id 顺序实现（小号优先）",
+    "  5. 每完成一个子任务必须 build + test + commit"
+  ],
+  "feature_name": "",
+  "created_at": "",
+  "tasks": [
+    {
+      "id": "T01",
+      "name": "任务描述",
+      "description": "详细说明要做什么",
+      "status": "pending",
+      "notes": ""
+    }
+  ]
+}

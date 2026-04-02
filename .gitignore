@@ -2,3 +2,10 @@ node_modules/
 dist/
 .harness/
 *.log
+*.tgz
+dist.tar.gz
+.DS_Store
+.env
+.env.local
+coverage/
+.claude/

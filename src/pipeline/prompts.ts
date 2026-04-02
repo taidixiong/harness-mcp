@@ -1,4 +1,8 @@
 import type { SnapshotDiff } from './snapshot.js';
+import type { WorkspaceContext } from './context.js';
+import type { Lesson } from '../state/lessons.js';
+import { formatContextSection } from './context.js';
+import { formatLessonsSection } from '../state/lessons.js';
 
 interface TaskInfo {
   id: string;
@@ -6,15 +10,35 @@ interface TaskInfo {
   description: string;
 }
 
-export function buildPlannerPrompt(task: TaskInfo): string {
-  return `You are planning the implementation of a task.
+interface PromptOptions {
+  context?: WorkspaceContext;
+  lessons?: readonly Lesson[];
+  loopWarning?: string;
+  checkResults?: string;
+}
+
+export function buildPlannerPrompt(
+  task: TaskInfo,
+  options: PromptOptions = {},
+): string {
+  const sections: string[] = [];
+
+  sections.push(`You are planning the implementation of a task.
 
 ## Task
 - ID: ${task.id}
 - Name: ${task.name}
-- Description: ${task.description}
+- Description: ${task.description}`);
 
-## Instructions
+  if (options.context) {
+    sections.push(formatContextSection(options.context));
+  }
+
+  if (options.lessons && options.lessons.length > 0) {
+    sections.push(formatLessonsSection(options.lessons));
+  }
+
+  sections.push(`## Instructions
 1. Read the relevant codebase to understand the current architecture
 2. Break the task into concrete implementation steps
 3. Identify files to create or modify
@@ -30,16 +54,20 @@ Respond with a structured plan in this JSON format:
   "acceptance_criteria": ["criterion 1", "criterion 2"],
   "risks": ["risk 1"]
 }
-\`\`\`
-`;
+\`\`\``);
+
+  return sections.join('\n\n');
 }
 
 export function buildGeneratorPrompt(
   task: TaskInfo,
   plan: string,
   debugFeedback?: string,
+  options: PromptOptions = {},
 ): string {
-  let prompt = `You are implementing a task according to a plan.
+  const sections: string[] = [];
+
+  sections.push(`You are implementing a task according to a plan.
 
 ## Task
 - ID: ${task.id}
@@ -53,20 +81,29 @@ ${plan}
 - Implement the code changes described in the plan
 - Write tests for new functionality
 - Ensure the code builds and tests pass
-- Follow existing code conventions in the project
-`;
+- Follow existing code conventions in the project`);
+
+  if (options.context) {
+    sections.push(formatContextSection(options.context));
+  }
+
+  if (options.lessons && options.lessons.length > 0) {
+    sections.push(formatLessonsSection(options.lessons));
+  }
+
+  if (options.loopWarning) {
+    sections.push(options.loopWarning);
+  }
 
   if (debugFeedback) {
-    prompt += `
-## Previous Attempt Failed
+    sections.push(`## Previous Attempt Failed
 The previous implementation had issues. Here is the feedback:
 ${debugFeedback}
 
-Fix these issues while maintaining the original plan.
-`;
+Fix these issues while maintaining the original plan.`);
   }
 
-  return prompt;
+  return sections.join('\n\n');
 }
 
 export function buildCodeReviewPrompt(
@@ -74,8 +111,11 @@ export function buildCodeReviewPrompt(
   plan: string,
   diff: SnapshotDiff,
   gitDiff: string,
+  options: PromptOptions = {},
 ): string {
-  return `You are reviewing code changes for a task.
+  const sections: string[] = [];
+
+  sections.push(`You are reviewing code changes for a task.
 
 ## Task
 - ID: ${task.id}
@@ -92,9 +132,13 @@ ${plan}
 ## Diff
 \`\`\`diff
 ${gitDiff}
-\`\`\`
+\`\`\``);
 
-## Review Checklist
+  if (options.checkResults) {
+    sections.push(options.checkResults);
+  }
+
+  sections.push(`## Review Checklist
 1. Code correctness - does it implement the plan?
 2. Error handling - are edge cases covered?
 3. Code style - consistent with existing codebase?
@@ -106,8 +150,9 @@ End your review with exactly one of:
 - VERDICT: PASS (if all checks pass)
 - VERDICT: FAIL (if any critical issue found)
 
-If FAIL, explain: what file, what issue, and why.
-`;
+If FAIL, explain: what file, what issue, and why.`);
+
+  return sections.join('\n\n');
 }
 
 export function buildSecurityReviewPrompt(
@@ -184,8 +229,11 @@ export function buildDebuggerPrompt(
   plan: string,
   diff: SnapshotDiff,
   failureFeedback: string,
+  options: PromptOptions = {},
 ): string {
-  return `You are debugging a failed code review or QA check.
+  const sections: string[] = [];
+
+  sections.push(`You are debugging a failed code review or QA check.
 
 ## Task
 - ID: ${task.id}
@@ -205,6 +253,15 @@ ${failureFeedback}
 - Make MINIMAL fixes to address the reported issues
 - Do NOT refactor or add features beyond the fix
 - Ensure the build passes after your changes
-- Run relevant tests to verify the fix
-`;
+- Run relevant tests to verify the fix`);
+
+  if (options.lessons && options.lessons.length > 0) {
+    sections.push(formatLessonsSection(options.lessons));
+  }
+
+  if (options.loopWarning) {
+    sections.push(options.loopWarning);
+  }
+
+  return sections.join('\n\n');
 }

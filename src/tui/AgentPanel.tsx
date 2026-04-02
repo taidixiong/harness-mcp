@@ -1,6 +1,5 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { Box, Text } from 'ink';
-import Spinner from 'ink-spinner';
 import type { AgentResult } from '../agents/types.js';
 import { AGENT_DISPLAY } from '../agents/registry.js';
 
@@ -12,7 +11,9 @@ interface AgentPanelProps {
   toolCallCounts: Record<string, number>;
 }
 
-export function AgentPanel({ activeAgent, activeResult, turnCount, maxTurns, toolCallCounts }: AgentPanelProps) {
+const SPINNER_FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+
+function AgentPanelInner({ activeAgent, activeResult, turnCount, maxTurns, toolCallCounts }: AgentPanelProps) {
   if (!activeAgent) {
     return (
       <Box padding={1}>
@@ -23,12 +24,13 @@ export function AgentPanel({ activeAgent, activeResult, turnCount, maxTurns, too
 
   const display = AGENT_DISPLAY[activeAgent as keyof typeof AGENT_DISPLAY] ?? { label: activeAgent, color: 'white' };
   const maxCount = Math.max(1, ...Object.values(toolCallCounts));
+  const frame = SPINNER_FRAMES[Math.floor(Date.now() / 1000) % SPINNER_FRAMES.length];
 
   return (
     <Box flexDirection="column" padding={1}>
       <Box marginBottom={1}>
-        <Spinner type="dots" />
-        <Text bold color={display.color}> {display.label}</Text>
+        <Text color="green">{frame} </Text>
+        <Text bold color={display.color}>{display.label}</Text>
         <Text> — Turn {turnCount}/{maxTurns}</Text>
       </Box>
 
@@ -59,3 +61,5 @@ export function AgentPanel({ activeAgent, activeResult, turnCount, maxTurns, too
     </Box>
   );
 }
+
+export const AgentPanel = memo(AgentPanelInner);

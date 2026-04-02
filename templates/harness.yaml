@@ -60,6 +60,14 @@ pipeline:
   max_retry: 2
   auto_commit: false
   snapshot_enabled: true
+  checks:
+    enabled: true
+    commands: []
+    # Example commands (uncomment and customize per project):
+    # - "npm run build"
+    # - "npm test"
+    # - "npx tsc --noEmit"
 
 tasks_file: "./tasks.yaml"
 state_file: "./.harness/state.json"
+lessons_file: "./.harness/lessons.json"

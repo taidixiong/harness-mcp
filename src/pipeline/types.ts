@@ -9,6 +9,7 @@ export interface TaskResult {
   agentResults: Record<string, AgentResult>;
   securityWarnings: string[];
   attempts: number;
+  exitReport?: string;
 }
 
 export interface PipelineCallbacks {
